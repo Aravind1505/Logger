@@ -1,8 +1,11 @@
 package org.winivin;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.IndexResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
@@ -39,7 +42,7 @@ public class Main {
 
     public static void routeMaps() {
         post("/dumpLarge", (request, response) -> {
-            int length = request.contentLength();
+            int length = request.body().length();
             String contentType = request.contentType();
             String body = request.body();
 
@@ -163,11 +166,32 @@ public class Main {
 
     public static void bulkJson(String jsonString) throws Exception{
         JSONArray array = new JSONArray(jsonString);
+        BulkRequest.Builder br = new BulkRequest.Builder();
         for(int i=0; i < array.length(); i++)
         {
             JSONObject object = array.getJSONObject(i);
             if( checkValidObject(object) ) {
                 pushToElastic(object);
+
+                Metadata metadata = new Metadata(object.getJSONObject("metadata").getString("parentResourceId"));
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Constants.format).withZone(ZoneId.of("UTC"));
+                LocalDateTime date = LocalDateTime.parse(object.getString("timestamp"), formatter);
+                LogObj log_entity = new LogObj(object.getString("level"), object.getString("message"),
+                        object.getString("resourceId"), date,
+                        object.getString("traceId"), object.getString("spanId"),
+                        object.getString("commit"), metadata);
+
+                br.operations(op -> op.index(idx -> idx.index("log").document(log_entity)));
+            }
+        }
+
+        BulkResponse result = client.bulk(br.build());
+        if (result.errors()) {
+            logger.error("Bulk had errors");
+            for (BulkResponseItem item: result.items()) {
+                if (item.error() != null) {
+                    logger.error(item.error().reason());
+                }
             }
         }
     }
