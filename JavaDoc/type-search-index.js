@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"org.winivin","l":"Constants"},{"p":"org.winivin","l":"CustomLocalDateTimeDeserializer"},{"p":"org.winivin","l":"CustomLocalDateTimeSerializer"},{"p":"org.winivin","l":"LogObj"},{"p":"org.winivin","l":"Main"},{"p":"org.winivin","l":"Metadata"}];updateSearchResults();
